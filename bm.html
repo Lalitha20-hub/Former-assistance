@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>🌾 One India One Farmer – National Assistance Platform</title>
+  <!-- Tailwind + Font Awesome + Google Fonts -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+    body { 
+      background: linear-gradient(rgba(230, 247, 236, 0.4), rgba(200, 230, 217, 0.4)), 
+                  url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&q=80&w=1920') no-repeat center center fixed;
+      background-size: cover;
+    }
+    .glass { background: rgba(255, 255, 255, 0.45); backdrop-filter: blur(16px); border-radius: 2rem; border: 1px solid rgba(255,255,255,0.6); box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07); }
+    .glass-card { background: rgba(255, 255, 255, 0.65); backdrop-filter: blur(12px); border-radius: 1.5rem; border: 1px solid rgba(255,255,255,0.6); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .glass-card:hover { transform: translateY(-4px); background: rgba(255, 255, 255, 0.8); box-shadow: 0 12px 24px rgba(0, 0, 0, 0.05); }
+    .chat-container { height: 380px; overflow-y: auto; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0,0,0,0.02); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb { background: #15803d; border-radius: 10px; }
+  </style>
+</head>
+<body class="transition-all duration-300 min-h-screen">
+
+<div id="root" class="min-h-screen p-4 md:p-8">
+  <!-- DYNAMIC RENDER WITH JAVASCRIPT -->
+</div>
+
+<script>
+  // ---------- SECURITY & STORAGE HELPERS ----------
+  const STORAGE_KEYS = {
+    users: 'oiof_users',
+    currentUser: 'oiof_current_user',
+    crops: 'oiof_crops',
+    messages: 'oiof_messages',
+    schemes: 'oiof_schemes',
+    diseaseReports: 'oiof_disease_reports'
+  };
+
+  async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  function sanitizeHTML(str) {
+    if (!str) return '';
+    return str.replace(/[&<>"']/g, function(match) {
+      const escapeMap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;' };
+      return escapeMap[match];
+    });
+  }
+
+  // Pre-hashed default credentials ('farmer123', 'expert123', 'admin123')
+  const defaultUsers = [
+    { id: '1', name: 'Ramesh Kumar', email: 'farmer@example.com', passwordHash: '73024844618e00192e4726e6f1406e9b46dfa1e5828a213e8d2e8b0e8bcf6270', role: 'farmer', location: 'Punjab', phone: '9876543210' },
+    { id: '2', name: 'Dr. Neha Sharma', email: 'expert@example.com', passwordHash: '0bc83ebbc103bc8839cb8a107ef466a908da6258f1f7216a3cf1ec6dfdf19131', role: 'expert', location: 'Delhi', phone: '9988776655' },
+    { id: '3', name: 'Admin Principal', email: 'admin@example.com', passwordHash: '01b162700e572834b6b19a1a364cf81c4e723049b8036293902f23b7b252cf34', role: 'admin', location: 'Admin', phone: '9999999999' }
+  ];
+
+  const defaultSchemes = [
+    { id: 's1', title: 'Pradhan Mantri Fasal Bima Yojana (PMFBY)', category: 'insurance', state: 'All', description: 'Comprehensive crop insurance coverage against natural structural loss at nominal premium structures.', benefits: 'Direct claim payouts against certified dynamic production losses', link: 'https://pmfby.gov.in/', isActive: true },
+    { id: 's2', title: 'PM-KISAN Samman Nidhi', category: 'subsidy', state: 'All', description: 'Direct dynamic asset transfers providing ₹6000 per annum in equal installments.', benefits: 'Direct income support credited right to regional savings databases', link: 'https://pmkisan.gov.in/', isActive: true },
+    { id: 's3', title: 'National Solar Pump Subsidy (PM-KUSUM)', category: 'equipment', state: 'Gujarat', description: 'Subsidized allocation pipelines provisioning solar-powered micro pump components up to 90%.', benefits: 'Reduces long-term commercial grid overhead configurations', link: 'https://pmkusum.mnre.gov.in/', isActive: true },
+  ];
+
+  function initStorage() {
+    if (!localStorage.getItem(STORAGE_KEYS.users)) localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(defaultUsers));
+    if (!localStorage.getItem(STORAGE_KEYS.crops)) localStorage.setItem(STORAGE_KEYS.crops, JSON.stringify([]));
+    if (!localStorage.getItem(STORAGE_KEYS.messages)) localStorage.setItem(STORAGE_KEYS.messages, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.schemes, JSON.stringify(defaultSchemes));
+    if (!localStorage.getItem(STORAGE_KEYS.diseaseReports)) localStorage.setItem(STORAGE_KEYS.diseaseReports, JSON.stringify([]));
+  }
+  initStorage();
+
+  function getCurrentUser() {
+    const userJson = localStorage.getItem(STORAGE_KEYS.currentUser);
+    return userJson ? JSON.parse(userJson) : null;
+  }
+  function setCurrentUser(user) { localStorage.setItem(STORAGE_KEYS.currentUser, JSON.stringify(user)); }
+  function logout() { localStorage.removeItem(STORAGE_KEYS.currentUser); renderApp(); }
+
+  // ---------- CROP DICTIONARIES & IMAGES ----------
+  const cropImages = {
+    'wheat': 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&q=80&w=600',
+    'rice': 'https://images.unsplash.com/photo-1536657464919-892534f60d6e?auto=format&fit=crop&q=80&w=600',
+    'paddy': 'https://images.unsplash.com/photo-1536657464919-892534f60d6e?auto=format&fit=crop&q=80&w=600',
+    'cotton': 'https://images.unsplash.com/photo-1594488270440-20cf972a9df5?auto=format&fit=crop&q=80&w=600',
+    'maize': 'https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&q=80&w=600',
+    'corn': 'https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&q=80&w=600',
+    'tomato': 'https://images.unsplash.com/photo-1595855759920-86582396756a?auto=format&fit=crop&q=80&w=600',
+    'default': 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?auto=format&fit=crop&q=80&w=600'
+  };
+
+  function getCropImage(name) {
+    if (!name) return cropImages.default;
+    const clean = name.toLowerCase().trim();
+    return cropImages[clean] || cropImages.default;
+  }
+
+  // ---------- SMART CROP SUGGESTION ENGINE ----------
+  function getCropSuggestions(cropName, stage) {
+    const name = cropName.toLowerCase().trim();
+    const suggestions = {
+      wheat: {
+        watering: "Every 12-15 days during vegetative phase. Crucial at crown root initiation.",
+        soil: "Requires balanced Nitrogen. Recommended NPK ratio is 4:2:1.",
+        tips: "Keep an eye out for yellow rust on leaves. Ensure clear drainage to prevent root rot."
+      },
+      rice: {
+        watering: "Maintain 2-5 cm of standing water during transplanting and tillering stages.",
+        soil: "Thrives in clayey loam soil. Responds well to split doses of Nitrogen urea.",
+        tips: "Ensure proper weeding within the first 30 days. Watch out for Blast disease symptoms."
+      },
+      paddy: {
+        watering: "Keep fields submerged under shallow water until the grain ripening stage approaches.",
+        soil: "Needs heavy soil bases rich in organic matter. Apply Zinc Sulfate if leaves show rust colors.",
+        tips: "Keep water levels optimal to suppress wild weed mutations naturally."
+      },
+      cotton: {
+        watering: "Moderate watering. Avoid waterlogging during flower bud initiation.",
+        soil: "Deep, well-drained black cotton soils are ideal. Requires adequate Potassium inputs.",
+        tips: "Monitor closely for Pink Bollworm infestations. Prune low-hanging non-productive branches."
+      },
+      tomato: {
+        watering: "Drip irrigation preferred. Water deeply 2-3 times a week at the base. Keep soil consistently moist.",
+        soil: "Prefers slightly acidic soil rich in compost. Needs Calcium to prevent blossom end rot.",
+        tips: "Provide stakes or cages for structural support. Prune side suckers to maximize fruit yield."
+      },
+      default: {
+        watering: "Keep root zone hydrated. Water early in the morning based on ambient topsoil dryness.",
+        soil: "Apply premium organic compost or vermicompost to revitalize micro-nutrient baselines.",
+        tips: "Rotate crops seasonally to prevent soil depletion and break pest cycles naturally."
+      }
+    };
+    return suggestions[name] || suggestions.default;
+  }
+
+  // ---------- MOCK APIS & DATA PROVIDERS ----------
+  async function fetchWeather() {
+    return {
+      temp: 29 + Math.floor(Math.random() * 6),
+      humidity: 60 + Math.floor(Math.random() * 15),
+      condition: ['Sunny', 'Partly Cloudy', 'Passing Showers', 'Clear Horizon'][Math.floor(Math.random()*4)]
+    };
+  }
+
+  function getMarketPrices(search = '') {
+    const allPrices = [
+      { commodity: 'Wheat', price: 2250, unit: 'Quintal', market: 'Ludhiana Mandi', state: 'Punjab' },
+      { commodity: 'Rice (Paddy)', price: 2180, unit: 'Quintal', market: 'Kurukshetra', state: 'Haryana' },
+      { commodity: 'Cotton', price: 6800, unit: 'Quintal', market: 'Ahmedabad', state: 'Gujarat' },
+      { commodity: 'Maize', price: 2100, unit: 'Quintal', market: 'Bhopal', state: 'MP' },
+      { commodity: 'Tomato', price: 2400, unit: 'Quintal', market: 'Bengaluru', state: 'Karnataka' }
+    ];
+    if (!search) return allPrices;
+    return allPrices.filter(p => p.commodity.toLowerCase().includes(search.toLowerCase()) || p.state.toLowerCase().includes(search.toLowerCase()));
+  }
+
+  // ---------- CRUD MANAGEMENT OPERATIONS ----------
+  function getUserCrops() {
+    const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.crops)) || [];
+    const user = getCurrentUser();
+    return user ? all.filter(c => c.farmerId === user.id) : [];
+  }
+  function addCrop(cropData) {
+    const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.crops)) || [];
+    const newCrop = { id: Date.now().toString(), ...cropData, farmerId: getCurrentUser().id, createdAt: new Date().toISOString() };
+    all.push(newCrop);
+    localStorage.setItem(STORAGE_KEYS.crops, JSON.stringify(all));
+    renderApp();
+  }
+  function deleteCrop(cropId) {
+    let all = JSON.parse(localStorage.getItem(STORAGE_KEYS.crops)) || [];
+    all = all.filter(c => c.id !== cropId);
+    localStorage.setItem(STORAGE_KEYS.crops, JSON.stringify(all));
+    renderApp();
+  }
+
+  function getMessagesForUser() {
+    const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.messages)) || [];
+    const user = getCurrentUser();
+    if (!user) return [];
+    return all.filter(m => m.senderId === user.id || m.receiverId === user.id).sort((a,b)=> new Date(a.timestamp) - new Date(b.timestamp));
+  }
+  function sendMessage(receiverId, text) {
+    const user = getCurrentUser();
+    if (!user) return;
+    const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.messages)) || [];
+    all.push({ id: Date.now(), senderId: user.id, receiverId, message: text, timestamp: new Date().toISOString() });
+    localStorage.setItem(STORAGE_KEYS.messages, JSON.stringify(all));
+    renderApp();
+  }
+  function autoExpertReply(farmerId, question) {
+    setTimeout(() => {
+      const expertUser = defaultUsers.find(u => u.role === 'expert');
+      if (expertUser) {
+        const replyText = `🤖 System Expert: Regarding "${sanitizeHTML(question.substring(0,40))}", localized parameters recommend stabilizing ambient field drainage.`;
+        const all = JSON.parse(localStorage.getItem(STORAGE_KEYS.messages)) || [];
+        all.push({ id: Date.now()+1, senderId: expertUser.id, receiverId: farmerId, message: replyText, timestamp: new Date().toISOString() });
+        localStorage.setItem(STORAGE_KEYS.messages, JSON.stringify(all));
+        renderApp();
+      }
+    }, 1200);
+  }
+
+  async function detectDisease() {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const diseases = [
+          { name: '🍂 Leaf Blight Condition', confidence: 94, remedy: 'Isolate crop foliage zones; process targeted standard bio-fungicide dispersion arrays.', img: 'https://images.unsplash.com/photo-1597244211919-8a52ab2e40ea?auto=format&fit=crop&q=80&w=400' },
+          { name: '🌾 Rust Spot Infestation', confidence: 89, remedy: 'Optimize systemic structural nutrient intake balance; clear redundant base vectors.', img: 'https://images.unsplash.com/photo-1500651230702-0e2d8a49d4ad?auto=format&fit=crop&q=80&w=400' }
+        ];
+        resolve(diseases[Math.floor(Math.random() * diseases.length)]);
+      }, 1000);
+    });
+  }
+
+  function getSchemes() { return JSON.parse(localStorage.getItem(STORAGE_KEYS.schemes)) || []; }
+
+  // ---------- APPLICATION VIEW STATE MANAGEMENT ----------
+  let currentView = 'dashboard'; 
+  let cropFormVisible = false;
+  let marketSearch = '';
+  let weatherData = null;
+  let diseaseResult = null;
+  let chatReceiverId = null;
+
+  async function renderApp() {
+    const user = getCurrentUser();
+    const root = document.getElementById('root');
+    if (!user) {
+      root.innerHTML = renderLoginRegister();
+      attachAuthEvents();
+      return;
+    }
+    if (!weatherData) weatherData = await fetchWeather();
+    
+    let sidebarItems = [];
+    if (user.role === 'farmer') {
+      sidebarItems = [
+        { id: 'dashboard', icon: 'fas fa-th-large', label: 'Overview Central' },
+        { id: 'crops', icon: 'fas fa-seedling', label: 'Crop Portfolios' },
+        { id: 'market', icon: 'fas fa-store-alt', label: 'National Markets' },
+        { id: 'chat', icon: 'fas fa-user-astronaut', label: 'Expert Channels' },
+        { id: 'disease', icon: 'fas fa-microscope', label: 'AI Diagnostic Hub' },
+        { id: 'schemes', icon: 'fas fa-shield-alt', label: 'Govt Schemes' }
+      ];
+    } else if (user.role === 'expert') {
+      sidebarItems = [
+        { id: 'dashboard', icon: 'fas fa-th-large', label: 'Expert Desk' },
+        { id: 'chat', icon: 'fas fa-comments', label: 'Consultation Queues' },
+        { id: 'schemes', icon: 'fas fa-landmark', label: 'Policy Indexes' }
+      ];
+    } else {
+      sidebarItems = [
+        { id: 'dashboard', icon: 'fas fa-chart-line', label: 'Analytics' },
+        { id: 'adminUsers', icon: 'fas fa-fingerprint', label: 'Node Identities' }
+      ];
+    }
+
+    let mainContent = '';
+    switch (currentView) {
+      case 'dashboard': mainContent = renderDashboard(user, user.role); break;
+      case 'crops': mainContent = renderCropsManagement(); break;
+      case 'market': mainContent = renderMarketPrices(); break;
+      case 'chat': mainContent = renderChatInterface(user); break;
+      case 'disease': mainContent = renderDiseaseDetection(); break;
+      case 'schemes': mainContent = renderSchemesList(); break;
+      case 'adminUsers': mainContent = renderAdminUsers(); break;
+      default: mainContent = '<div class="glass-card p-6">Active Node Processing Complete.</div>';
+    }
+
+    root.innerHTML = `
+      <div class="flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto items-start">
+        <aside class="w-full lg:w-80 glass p-6 rounded-[2rem] sticky top-6">
+          <div class="flex items-center gap-4 mb-6 border-b border-black/10 pb-5">
+            <div class="w-14 h-14 rounded-2xl bg-emerald-700 flex items-center justify-center text-white text-2xl font-bold shadow-inner">🇮🇳</div>
+            <div>
+              <h2 class="font-bold text-lg text-emerald-900 tracking-tight">One India One Farmer</h2>
+              <p class="text-xs font-semibold text-emerald-700/80 capitalize">${sanitizeHTML(user.name)} (${user.role})</p>
+            </div>
+          </div>
+          <nav class="space-y-1 w-full">
+            ${sidebarItems.map(item => `<button data-nav="${item.id}" class="nav-btn w-full text-left px-4 py-3.5 rounded-xl flex items-center gap-3.5 ${currentView === item.id ? 'bg-emerald-700 text-white font-semibold shadow-lg shadow-emerald-700/20' : 'text-emerald-900/80 hover:bg-white/40'} transition-all duration-200"><i class="${item.icon} text-lg opacity-90 w-6"></i> ${item.label}</button>`).join('')}
+            <button data-logout class="w-full text-left px-4 py-3.5 rounded-xl flex items-center gap-3.5 text-red-600 hover:bg-red-50/60 font-semibold mt-8 border border-dashed border-red-200"><i class="fas fa-power-off text-lg w-6"></i> System Sign Out</button>
+          </nav>
+        </aside>
+        <main class="flex-1 w-full min-h-[600px] bg-transparent">${mainContent}</main>
+      </div>
+    `;
+    
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => { currentView = btn.dataset.nav; renderApp(); });
+    });
+    document.querySelector('[data-logout]')?.addEventListener('click', logout);
+    attachSpecificEvents();
+  }
+
+  // ---------- UI COMPONENT GENERATORS ----------
+  function renderDashboard(user, role) {
+    if (role === 'farmer') {
+      const crops = getUserCrops();
+      return `
+        <div class="space-y-6">
+          <div class="relative overflow-hidden bg-gradient-to-br from-emerald-900 to-teal-850 p-8 rounded-[2rem] text-white shadow-xl">
+            <div class="absolute right-0 bottom-0 pointer-events-none transform translate-x-10 translate-y-10 opacity-10"><i class="fas fa-tractor text-[15rem]"></i></div>
+            <span class="bg-emerald-500/20 text-emerald-300 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-emerald-500/30">Ecosystem Status Node</span>
+            <h1 class="text-3xl font-bold mt-3 tracking-tight">Jai Kisan, ${sanitizeHTML(user.name)} 👋</h1>
+            <p class="text-emerald-100/90 text-sm mt-1 max-w-md">National centralized agrarian indexes indicate optimization capabilities across your regional tracking map (${sanitizeHTML(user.location)}).</p>
+            <div class="flex gap-6 mt-6 border-t border-white/10 pt-4 text-center">
+              <div><span class="text-xs text-emerald-200/80 block">Active Metrics</span><span class="text-xl font-bold">${crops.length} Records</span></div>
+              <div class="border-l border-white/10 pl-6"> <span class="text-xs text-emerald-200/80 block">Atmosphere</span><span class="text-xl font-bold">${weatherData.temp}°C (${weatherData.condition})</span></div>
+            </div>
+          </div>
+          <div class="grid md:grid-cols-2 gap-6">
+            <div class="glass p-6 rounded-[2rem]">
+              <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-emerald-950">Active Registries</h3><i class="fas fa-seedling text-emerald-700"></i></div>
+              <div class="space-y-3">${crops.length === 0 ? '<p class="text-sm opacity-60">No crop production entities flagged inside local cache arrays.</p>' : crops.slice(0, 2).map(c => `<div class="flex items-center gap-3 p-2 bg-white/50 rounded-xl"><img src="${getCropImage(c.name)}" class="w-10 h-10 object-cover rounded-lg shadow-inner"><div><span class="font-bold text-sm block text-emerald-900">${sanitizeHTML(c.name)}</span><span class="text-xs opacity-70">${sanitizeHTML(c.growthStage)}</span></div></div>`).join('')}</div>
+            </div>
+            <div class="glass p-6 rounded-[2rem] flex flex-col justify-between">
+              <div>
+                <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-emerald-950">Central Infrastructure Bulletins</h3><i class="fas fa-bullhorn text-amber-600"></i></div>
+                <div class="text-xs space-y-2 text-emerald-900/90">
+                  <div class="p-2 bg-amber-50/60 rounded-xl border border-amber-100">Dynamic update logs indicate support pricing increases across standardized baseline indices.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    } else {
+      return `<div class="glass p-8 rounded-[2rem] text-center max-w-md mx-auto"><i class="fas fa-shield-alt text-5xl text-emerald-700 mb-4"></i><h2 class="text-2xl font-bold text-emerald-950">National Monitor Framework</h2><p class="text-sm opacity-80 mt-1">Authorized access validated for security tier profile: "${role.toUpperCase()}".</p></div>`;
+    }
+  }
+
+  // REFACTORED CROP MANAGEMENT PANEL: Includes live dynamic suggestions mapped directly to crop parameters
+  function renderCropsManagement() {
+    const crops = getUserCrops();
+    return `
+      <div class="space-y-6">
+        <div class="flex justify-between items-center bg-white/60 p-4 rounded-2xl border border-white/40">
+          <h2 class="text-xl font-bold text-emerald-950">Active Crop Management Portfolio</h2>
+          <button data-add-crop class="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-xl font-semibold transition text-sm flex items-center gap-2"><i class="fas fa-plus text-xs"></i> Register Crop Entry</button>
+        </div>
+        ${cropFormVisible ? `
+          <div class="glass p-6 rounded-[2rem] space-y-3 border-2 border-emerald-600/20 animate-fadeIn">
+            <h3 class="font-bold text-emerald-900">Define Asset Boundaries</h3>
+            <div class="grid md:grid-cols-3 gap-3">
+              <input id="cropName" placeholder="Commodity Name (e.g., Wheat, Rice, Tomato)" class="p-3 rounded-xl bg-white/80 border border-black/10 focus:outline-emerald-600 text-sm">
+              <select id="cropStage" class="p-3 rounded-xl bg-white/80 border border-black/10 focus:outline-emerald-600 text-sm"><option>Seedling</option><option>Vegetative</option><option>Flowering</option><option>Maturity</option></select>
+              <input id="plantingDate" type="date" class="p-3 rounded-xl bg-white/80 border border-black/10 focus:outline-emerald-600 text-sm">
+            </div>
+            <div class="pt-2 flex gap-2"><button id="saveCropBtn" class="bg-emerald-700 text-white px-5 py-2 rounded-xl text-sm font-semibold shadow-md">Commit Log</button><button id="cancelCropBtn" class="px-5 py-2 rounded-xl text-sm font-semibold bg-white/60 border border-black/10">Abort</button></div>
+          </div>` : ''}
+        
+        <div class="grid lg:grid-cols-2 gap-6">
+          ${crops.map(c => {
+            const advice = getCropSuggestions(c.name, c.growthStage);
+            return `
+              <div class="glass-card overflow-hidden flex flex-col justify-between shadow-sm rounded-3xl">
+                <div>
+                  <div class="relative">
+                    <img src="${getCropImage(c.name)}" class="w-full h-44 object-cover">
+                    <span class="absolute top-3 right-3 bg-white/90 backdrop-blur-md text-emerald-900 font-bold text-xs px-3 py-1 rounded-full border border-white/20 capitalize shadow-sm">${sanitizeHTML(c.growthStage)} Stage</span>
+                  </div>
+                  <!-- LIVE CROP SUGGESTIONS EXPANSION ARRAY -->
+                  <div class="p-5 space-y-3.5">
+                    <div class="flex justify-between items-start">
+                      <h4 class="font-bold text-emerald-950 text-xl tracking-tight">${sanitizeHTML(c.name)}</h4>
+                      <span class="text-xs font-semibold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-lg"><i class="far fa-calendar-alt mr-1"></i>${sanitizeHTML(c.plantingDate || 'Not specified')}</span>
+                    </div>
+                    <div class="border-t border-black/5 pt-3 space-y-2 text-xs">
+                      <div class="flex gap-2 items-start text-emerald-900"><i class="fas fa-tint text-emerald-600 mt-0.5 w-4"></i><div><strong class="text-emerald-950">Watering Parameters:</strong> ${advice.watering}</div></div>
+                      <div class="flex gap-2 items-start text-emerald-900"><i class="fas fa-flask text-purple-600 mt-0.5 w-4"></i><div><strong class="text-emerald-950">Soil & Nutrient Matrix:</strong> ${advice.soil}</div></div>
+                      <div class="flex gap-2 items-start text-emerald-900"><i class="fas fa-lightbulb text-amber-600 mt-0.5 w-4"></i><div><strong class="text-emerald-950">Smart Action Tip:</strong> ${advice.tips}</div></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="px-5 pb-5 pt-2 flex justify-end">
+                  <button data-del-crop="${c.id}" class="px-4 py-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition flex items-center gap-2 text-xs font-bold uppercase tracking-wider"><i class="fas fa-trash-alt"></i> Delete Registry</button>
+                </div>
+              </div>`;
+          }).join('')}
+        </div>
+        
+        ${crops.length === 0 ? `
+          <div class="glass p-8 rounded-[2rem] text-center max-w-lg mx-auto border border-dashed border-emerald-800/30">
+            <i class="fas fa-seedling text-4xl text-emerald-700/50 mb-3 block"></i>
+            <h3 class="font-bold text-emerald-950 text-lg">Your Farm Portfolio is Empty</h3>
+            <p class="text-xs text-gray-600 mt-1 max-w-sm mx-auto">Register crops like **Wheat, Rice, Cotton, or Tomato** to instantly unlock dynamic expert recommendations and real-time parameter tracking layouts.</p>
+          </div>` : ''}
+      </div>`;
+  }
+
+  function renderMarketPrices() {
+    const prices = getMarketPrices(marketSearch);
+    return `
+      <div class="space-y-4">
+        <div class="glass p-4 rounded-2xl flex items-center gap-3 bg-white/80"><i class="fas fa-search text-emerald-700 opacity-70"></i><input type="text" id="marketSearch" placeholder="Filter national exchange nodes (Commodity, State)..." class="bg-transparent w-full focus:outline-none text-sm text-emerald-950" value="${sanitizeHTML(marketSearch)}"></div>
+        <div class="grid md:grid-cols-2 gap-4">${prices.map(p => `
+          <div class="glass-card p-5 flex gap-4 items-center">
+            <img src="${getCropImage(p.commodity)}" class="w-16 h-16 object-cover rounded-xl shadow-inner">
+            <div class="flex-1 flex justify-between items-center">
+              <div>
+                <span class="font-bold text-emerald-950 block">${sanitizeHTML(p.commodity)}</span>
+                <span class="text-xs opacity-70 block"><i class="fas fa-map-marker-alt text-emerald-700 mr-1"></i>${sanitizeHTML(p.market)}, ${sanitizeHTML(p.state)}</span>
+              </div>
+              <div class="text-right"><span class="text-lg font-bold text-emerald-800 block">₹${p.price}</span><span class="text-[10px] tracking-wider text-gray-500 uppercase font-semibold">Per ${sanitizeHTML(p.unit)}</span></div>
+            </div>
+          </div>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  function renderChatInterface(user) {
+    const allUsers = JSON.parse(localStorage.getItem(STORAGE_KEYS.users)) || [];
+    const chatPartnerList = user.role === 'farmer' ? allUsers.filter(u => u.role === 'expert') : allUsers.filter(u => u.role === 'farmer');
+    const messages = getMessagesForUser();
+    const chatMessages = messages.filter(m => (m.senderId === user.id && m.receiverId === chatReceiverId) || (m.senderId === chatReceiverId && m.receiverId === user.id));
+    
+    return `
+      <div class="glass p-4 rounded-[2rem] flex flex-col md:flex-row gap-4 h-[550px] overflow-hidden">
+        <div class="md:w-1/3 border-r border-black/5 pr-2 overflow-y-auto space-y-1"><h3 class="text-xs font-bold uppercase tracking-wider text-emerald-800 mb-2 px-2">Assigned Channels</h3>${chatPartnerList.map(p => `<div data-chat-partner="${p.id}" class="p-3 rounded-xl cursor-pointer font-medium text-sm transition-all duration-150 ${chatReceiverId === p.id ? 'bg-emerald-700 text-white shadow-md' : 'hover:bg-white/50 text-emerald-950'} flex items-center gap-2"><i class="fas fa-user-circle text-lg opacity-70"></i>${sanitizeHTML(p.name)}</div>`).join('')}</div>
+        <div class="flex-1 flex flex-col justify-between h-full bg-white/20 rounded-2xl p-3">
+          <div class="flex-1 overflow-y-auto chat-container space-y-2.5 p-2">${chatMessages.map(m => `<div class="flex flex-col ${m.senderId === user.id ? 'items-end' : 'items-start'}"><span class="inline-block max-w-xs p-3 rounded-2xl text-sm font-medium shadow-sm ${m.senderId === user.id ? 'bg-emerald-700 text-white rounded-tr-none' : 'bg-white text-emerald-950 rounded-tl-none'}">${sanitizeHTML(m.message)}</span></div>`).join('')}</div>
+          <div class="flex mt-2 gap-2 bg-white p-1.5 rounded-xl border border-black/5"><input id="chatInput" class="flex-1 px-3 py-2 text-sm focus:outline-none bg-transparent" placeholder="Broadcast localized system question..."><button id="sendChatBtn" class="bg-emerald-700 hover:bg-emerald-800 px-5 rounded-lg text-white text-xs font-bold uppercase tracking-wider transition">Send</button></div>
+        </div>
+      </div>`;
+  }
+
+  function renderDiseaseDetection() { 
+    return `
+      <div class="glass p-6 rounded-[2rem] space-y-4">
+        <div><h2 class="text-xl font-bold text-emerald-950">AI Agrarian Diagnostics Matrix</h2><p class="text-xs opacity-70">Submit standard high-resolution foliage image files to process neural validation passes.</p></div>
+        <div class="border-2 border-dashed border-emerald-880/20 bg-white/30 rounded-2xl p-6 text-center space-y-3">
+          <i class="fas fa-cloud-upload-alt text-4xl text-emerald-700 opacity-60"></i>
+          <input type="file" id="diseaseImage" accept="image/*" class="block mx-auto text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
+          <button id="detectBtn" class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold uppercase tracking-wider px-6 py-2.5 rounded-xl shadow-md transition">Initialize Computer Vision Analysis</button>
+        </div>
+        <div id="diseaseResult animate-fadeIn">${diseaseResult ? `
+          <div class="bg-white/80 rounded-2xl overflow-hidden border border-emerald-600/10 shadow-sm flex flex-col md:flex-row">
+            <img src="${diseaseResult.img}" class="w-full md:w-48 h-40 md:h-full object-cover">
+            <div class="p-5 space-y-1">
+              <span class="bg-emerald-100 text-emerald-800 text-[10px] uppercase font-bold tracking-widest px-2.5 py-0.5 rounded-md">Diagnostic Yield</span>
+              <h4 class="font-bold text-lg text-emerald-950">${sanitizeHTML(diseaseResult.name)} <span class="text-emerald-700 font-medium">(${diseaseResult.confidence}% Accuracy Match)</span></h4>
+              <p class="text-xs text-gray-600 leading-relaxed font-medium mt-1">**Remedial Vector Execution**: ${sanitizeHTML(diseaseResult.remedy)}</p>
+            </div>
+          </div>` : ''}
+        </div>
+      </div>`; 
+  }
+
+  function renderSchemesList() { 
+    const schemes = getSchemes(); 
+    return `
+      <div class="space-y-4">
+        <div class="bg-white/60 p-4 rounded-2xl border border-white/40">
+          <h2 class="text-xl font-bold text-emerald-950">Active Central Policy & Resource Indexes</h2>
+          <p class="text-xs text-emerald-800/80 mt-0.5 font-medium">💡 Click on any policy card below to open its official Government portal in a new tab.</p>
+        </div>
+        <div class="grid md:grid-cols-2 gap-4">
+          ${schemes.map(s => `
+            <a href="${sanitizeHTML(s.link)}" target="_blank" rel="noopener noreferrer" class="glass p-5 rounded-2xl flex flex-col justify-between border-l-4 border-emerald-700 bg-white/40 shadow-sm block hover:border-emerald-500 hover:bg-white/70 transition-all duration-200 cursor-pointer group">
+              <div>
+                <div class="flex justify-between items-start">
+                  <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold uppercase px-2 py-0.5 rounded tracking-wider">${sanitizeHTML(s.category)}</span>
+                  <i class="fas fa-external-link-alt text-xs text-emerald-700/40 group-hover:text-emerald-700 transition-colors"></i>
+                </div>
+                <h3 class="font-bold text-emerald-950 mt-1.5 text-base tracking-tight leading-snug group-hover:text-emerald-800 transition-colors">${sanitizeHTML(s.title)}</h3>
+                <p class="text-xs text-emerald-900/80 mt-1.5 leading-relaxed">${sanitizeHTML(s.description)}</p>
+              </div>
+              <div class="mt-4 pt-3 border-t border-black/5 text-[11px] font-semibold text-emerald-800">🎯 Payload Benefit Status: ${sanitizeHTML(s.benefits)}</div>
+            </a>
+          `).join('')}
+        </div>
+      </div>`; 
+  }
+
+  function renderAdminUsers() { 
+    const users = JSON.parse(localStorage.getItem(STORAGE_KEYS.users)) || []; 
+    return `<div class="glass p-6 rounded-[2rem]"><h2 class="text-xl font-bold text-emerald-950 mb-4">Identity Matrix Grid</h2><div class="space-y-2">${users.map(u => `<div class="bg-white/60 p-3.5 rounded-xl flex justify-between items-center border border-black/5"><div class="text-sm font-semibold text-emerald-950">${sanitizeHTML(u.name)} <span class="text-xs font-normal opacity-60">(${sanitizeHTML(u.role)})</span></div><button data-delete-user="${u.id}" class="text-xs font-bold text-red-600 uppercase hover:underline">Revoke Authorization</button></div>`).join('')}</div></div>`; 
+  }
+
+  // ---------- EVENT ATTACHMENT HUB ----------
+  function attachSpecificEvents() {
+    document.querySelector('[data-add-crop]')?.addEventListener('click', () => { cropFormVisible = true; renderApp(); });
+    document.getElementById('saveCropBtn')?.addEventListener('click', () => { 
+      const name = document.getElementById('cropName').value; 
+      const stage = document.getElementById('cropStage').value; 
+      const date = document.getElementById('plantingDate').value; 
+      if (name) addCrop({ name, growthStage: stage, plantingDate: date }); 
+      cropFormVisible = false; 
+    });
+    document.getElementById('cancelCropBtn')?.addEventListener('click', () => { cropFormVisible = false; renderApp(); });
+    document.querySelectorAll('[data-del-crop]').forEach(btn => btn.addEventListener('click', () => { deleteCrop(btn.dataset.delCrop); }));
+    document.getElementById('marketSearch')?.addEventListener('input', (e) => { marketSearch = e.target.value; renderApp(); });
+    document.querySelectorAll('[data-chat-partner]').forEach(el => el.addEventListener('click', () => { chatReceiverId = el.dataset.chatPartner; renderApp(); }));
+    document.getElementById('sendChatBtn')?.addEventListener('click', () => { 
+      const msg = document.getElementById('chatInput')?.value; 
+      if (msg && chatReceiverId) { 
+        sendMessage(chatReceiverId, msg); 
+        if (getCurrentUser().role === 'farmer') autoExpertReply(getCurrentUser().id, msg); 
+        document.getElementById('chatInput').value = ''; 
+      } 
+    });
+    document.getElementById('detectBtn')?.addEventListener('click', async () => { 
+      diseaseResult = await detectDisease(); 
+      renderApp(); 
+    });
+    document.querySelectorAll('[data-delete-user]').forEach(btn => btn.addEventListener('click', () => { 
+      let users = JSON.parse(localStorage.getItem(STORAGE_KEYS.users)) || []; 
+      users = users.filter(u => u.id !== btn.dataset.deleteUser); 
+      localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(users)); 
+      renderApp(); 
+    }));
+  }
+
+  // ---------- SECURE AUTHENTICATION INTERFACE ----------
+  function renderLoginRegister() { 
+    return `
+      <div class="max-w-md mx-auto mt-20 bg-white/80 backdrop-blur-md p-8 rounded-[2rem] shadow-2xl border border-white">
+        <div class="text-center">
+          <span class="text-3xl">🇮🇳</span>
+          <h2 class="text-2xl font-bold text-emerald-950 mt-2 tracking-tight">One India One Farmer</h2>
+          <p class="text-xs text-gray-500 font-medium mt-0.5">National Agrarian Centralization Framework</p>
+        </div>
+        <div id="authTabs" class="flex mt-6 border-b border-gray-200 text-sm">
+          <button id="loginTab" class="flex-1 py-2 font-bold border-b-2 border-emerald-700 text-emerald-900">Sign In</button>
+          <button id="registerTab" class="flex-1 py-2 font-semibold text-gray-400">Register Node</button>
+        </div>
+        <div id="authForm" class="mt-4 space-y-3">
+          <div id="authError" class="text-red-600 text-xs font-semibold hidden text-center bg-red-50 p-2 rounded-lg border border-red-200"></div>
+          <input id="email" type="email" placeholder="Registered Email Base" class="w-full p-3 rounded-xl bg-white border border-gray-200 text-sm focus:outline-emerald-600 shadow-inner">
+          <input id="password" type="password" placeholder="Passphrase Security Core" class="w-full p-3 rounded-xl bg-white border border-gray-200 text-sm focus:outline-emerald-600 shadow-inner">
+          <select id="roleSelect" class="w-full p-3 rounded-xl bg-white border border-gray-200 text-sm hidden focus:outline-emerald-600"><option value="farmer">Agrarian Producer (Farmer)</option><option value="expert">State Verified Expert</option></select>
+          <button id="authSubmitBtn" class="w-full bg-emerald-700 hover:bg-emerald-800 transition text-white p-3 rounded-xl mt-2 font-bold uppercase tracking-wider text-xs shadow-lg shadow-emerald-700/20">Authorize Authentication Link</button>
+        </div>
+      </div>`; 
+  }
+
+  function attachAuthEvents() {
+    let isLogin = true;
+    const loginTab = document.getElementById('loginTab');
+    const registerTab = document.getElementById('registerTab');
+    const roleSelect = document.getElementById('roleSelect');
+    const submitBtn = document.getElementById('authSubmitBtn');
+    const authError = document.getElementById('authError');
+
+    loginTab?.addEventListener('click', () => { 
+      isLogin = true; 
+      loginTab.className = "flex-1 py-2 font-bold border-b-2 border-emerald-700 text-emerald-900";
+      registerTab.className = "flex-1 py-2 font-semibold text-gray-400";
+      roleSelect.classList.add('hidden'); 
+      submitBtn.innerText = 'Authorize Authentication Link'; 
+      authError.classList.add('hidden');
+    });
+
+    registerTab?.addEventListener('click', () => { 
+      isLogin = false; 
+      registerTab.className = "flex-1 py-2 font-bold border-b-2 border-emerald-700 text-emerald-900";
+      loginTab.className = "flex-1 py-2 font-semibold text-gray-400";
+      roleSelect.classList.remove('hidden'); 
+      submitBtn.innerText = 'Register Structural Profile'; 
+      authError.classList.add('hidden');
+    });
+
+    submitBtn?.addEventListener('click', async () => { 
+      const email = document.getElementById('email').value.trim(); 
+      const pass = document.getElementById('password').value; 
+      const users = JSON.parse(localStorage.getItem(STORAGE_KEYS.users)) || []; 
+      
+      if (!email || !pass) {
+        authError.innerText = "Execution failed: Form fields parameters empty.";
+        authError.classList.remove('hidden');
+        return;
+      }
+
+      const inputHash = await hashPassword(pass);
+
+      if (isLogin) { 
+        const found = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.passwordHash === inputHash); 
+        if (found) { 
+          setCurrentUser(found); 
+          renderApp(); 
+        } else { 
+          authError.innerText = "Failure: Mismatched data hash signature verification mapping.";
+          authError.classList.remove('hidden');
+        } 
+      } else { 
+        if(users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+          authError.innerText = "Identity Collision: Node structural allocation error.";
+          authError.classList.remove('hidden');
+          return;
+        }
+        const role = roleSelect.value; 
+        const newUser = { id: Date.now().toString(), name: email.split('@')[0], email, passwordHash: inputHash, role, location: 'Punjab' }; 
+        users.push(newUser); 
+        localStorage.setItem(STORAGE_KEYS.users, JSON.stringify(users)); 
+        setCurrentUser(newUser); 
+        renderApp(); 
+      } 
+    });
+  }
+
+  renderApp();
+</script>
+</body>
+</html>
